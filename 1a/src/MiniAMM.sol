@@ -44,6 +44,9 @@ contract MiniAMM is IMiniAMM, IMiniAMMEvents {
 
     // complete the function
     function addLiquidity(uint256 xAmountIn, uint256 yAmountIn) external {
+        // Check input amounts must be greater than 0
+        require(xAmountIn > 0 && yAmountIn > 0, "Amounts must be greater than 0");
+
         // Transfer token (From User -> To Contract)
         IERC20(tokenX).transferFrom(msg.sender, address(this), xAmountIn);
         IERC20(tokenY).transferFrom(msg.sender, address(this), yAmountIn);
