@@ -19,6 +19,10 @@ contract MiniAMM is IMiniAMM, IMiniAMMEvents {
         // Check if TokenX is not equal to TokenY
         require(_tokenX != _tokenY, "Tokens must be different");
 
+        // Check if any of the tokens is a zero address
+        require(_tokenX != address(0), "tokenX cannot be zero address");
+        require(_tokenY != address(0), "tokenY cannot be zero address");
+
         // To fix the order of tokens in the liquidity pool regardless of the parameter order
         if (_tokenX > _tokenY) {
             tokenX = _tokenX;
