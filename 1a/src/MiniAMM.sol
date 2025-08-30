@@ -16,6 +16,9 @@ contract MiniAMM is IMiniAMM, IMiniAMMEvents {
 
     // implement constructor
     constructor(address _tokenX, address _tokenY) {
+        // Check if TokenX is not equal to TokenY
+        require(_tokenX != _tokenY, "Tokens must be different");
+
         // To fix the order of tokens in the liquidity pool regardless of the parameter order
         if (_tokenX > _tokenY) {
             tokenX = _tokenX;
