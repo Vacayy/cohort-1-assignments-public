@@ -33,42 +33,81 @@ contract MiniAMM is IMiniAMM, IMiniAMMEvents {
         }
     }
 
-    // add parameters and implement function.
     // this function will determine the initial 'k'.
-    function _addLiquidityFirstTime(uint256 xAmountIn, uint256 yAmountIn) internal {
-        k = xAmountIn * yAmountIn;
-        xReserve = xAmountIn;
-        yReserve = yAmountIn;
+    function _addLiquidityFirstTime(uint256 _xAmountIn, uint256 _yAmountIn) internal {
+        k = _xAmountIn * _yAmountIn;
+        xReserve = _xAmountIn;
+        yReserve = _yAmountIn;
     }
 
     // this function will increase the 'k'
     // because it is transferring liquidity from users to this contract.
-    function _addLiquidityNotFirstTime(uint256 xAmountIn, uint256 yAmountIn) internal {
-        xReserve += xAmountIn;
-        yReserve += yAmountIn;
+    function _addLiquidityNotFirstTime(uint256 _xAmountIn, uint256 _yAmountIn) internal {
+        xReserve += _xAmountIn;
+        yReserve += _yAmountIn;
         k = xReserve * yReserve;
     }
 
-    // complete the function
-    function addLiquidity(uint256 xAmountIn, uint256 yAmountIn) external {
+    function addLiquidity(uint256 _xAmountIn, uint256 _yAmountIn) external {
         // Check input amounts must be greater than 0
-        require(xAmountIn > 0 && yAmountIn > 0, "Amounts must be greater than 0");
+        require(_xAmountIn > 0 && _yAmountIn > 0, "Amounts must be greater than 0");
 
         // Transfer token (From User -> To Contract)
-        IERC20(tokenX).transferFrom(msg.sender, address(this), xAmountIn);
-        IERC20(tokenY).transferFrom(msg.sender, address(this), yAmountIn);
+        IERC20(tokenX).transferFrom(msg.sender, address(this), _xAmountIn);
+        IERC20(tokenY).transferFrom(msg.sender, address(this), _yAmountIn);
         
         // Update pool information
         if (k == 0) {
-            _addLiquidityFirstTime(xAmountIn, yAmountIn);
+            _addLiquidityFirstTime(_xAmountIn, _yAmountIn);
         } else {
-            _addLiquidityNotFirstTime(xAmountIn, yAmountIn);
+            _addLiquidityNotFirstTime(_xAmountIn, _yAmountIn);
         }
         
         // Emit event
-        emit AddLiquidity(xAmountIn, yAmountIn);
+        emit AddLiquidity(_xAmountIn, _yAmountIn);
     }
 
     // complete the function
-    function swap(uint256 xAmountIn, uint256 yAmountIn) external {}
+function swap(uint256 _xAmountIn, uint256 _yAmountIn) external {
+    // Check that at least one token is being swapped
+    require(_xAmountIn > 0 || _yAmountIn > 0, "Must swap at least one token");
+    // Check that only one direction can be swapped (both cannot be 0 or both non-zero)
+    require((_xAmountIn > 0 && _yAmountIn == 0) || (_xAmountIn == 0 && _yAmountIn > 0), "Can only swap one direction at a time");
+    // Check that there is liquidity in the pool
+    require(k > 0, "No liquidity in pool");
+    
+    if (_xAmountIn > 0) {
+        // X -> Y swap
+        // Check liquidity is enough
+        require(xReserve >= _xAmountIn, "Insufficient liquidity");
+
+        uint256 expectedYOut = yReserve - (k / (xReserve + _xAmountIn));
+        
+        IERC20(tokenX).transferFrom(msg.sender, address(this), _xAmountIn);
+        IERC20(tokenY).transfer(msg.sender, expectedYOut);
+        
+        // Update pool information
+        xReserve += _xAmountIn;
+        yReserve -= expectedYOut;
+        
+        // Emit event
+        emit Swap(_xAmountIn, expectedYOut);
+    } else {
+        // Y -> X swap
+        // Check liquidity is enough
+        require(yReserve >= _yAmountIn, "Insufficient liquidity");
+
+        uint256 expectedXOut = xReserve - (k / (yReserve + _yAmountIn));
+        
+        IERC20(tokenY).transferFrom(msg.sender, address(this), _yAmountIn);
+        IERC20(tokenX).transfer(msg.sender, expectedXOut);
+        
+        // Update pool information
+        yReserve += _yAmountIn;
+        xReserve -= expectedXOut;
+        
+        // Emit event
+        emit Swap(expectedXOut, _yAmountIn);
+    }
+}
 }
