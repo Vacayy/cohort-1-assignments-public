@@ -16,7 +16,7 @@ contract MiniAMM is IMiniAMM, IMiniAMMEvents {
 
     // implement constructor
     constructor(address _tokenX, address _tokenY) {
-        // 파라미터 순서와 관계없이 유동성 풀의 토큰 순서를 고정하기 위함
+        // To fix the order of tokens in the liquidity pool regardless of the parameter order
         if (_tokenX > _tokenY) {
             tokenX = _tokenX;
             tokenY = _tokenY;
@@ -28,29 +28,35 @@ contract MiniAMM is IMiniAMM, IMiniAMMEvents {
 
     // add parameters and implement function.
     // this function will determine the initial 'k'.
-    function _addLiquidityFirstTime() internal {
-        uint256 xAmountIn = IERC20(tokenX).balanceOf(msg.sender);
-        uint256 yAmountIn = IERC20(tokenY).balanceOf(msg.sender);
-
+    function _addLiquidityFirstTime(uint256 xAmountIn, uint256 yAmountIn) internal {
         k = xAmountIn * yAmountIn;
         xReserve = xAmountIn;
         yReserve = yAmountIn;
     }
 
-    // add parameters and implement function.
     // this function will increase the 'k'
     // because it is transferring liquidity from users to this contract.
-    function _addLiquidityNotFirstTime() internal {}
+    function _addLiquidityNotFirstTime(uint256 xAmountIn, uint256 yAmountIn) internal {
+        xReserve += xAmountIn;
+        yReserve += yAmountIn;
+        k = xReserve * yReserve;
+    }
 
     // complete the function
     function addLiquidity(uint256 xAmountIn, uint256 yAmountIn) external {
+        // Transfer token (From User -> To Contract)
+        IERC20(tokenX).transferFrom(msg.sender, address(this), xAmountIn);
+        IERC20(tokenY).transferFrom(msg.sender, address(this), yAmountIn);
+        
+        // Update pool information
         if (k == 0) {
-            // add params
-            _addLiquidityFirstTime();
+            _addLiquidityFirstTime(xAmountIn, yAmountIn);
         } else {
-            // add params
-            _addLiquidityNotFirstTime();
+            _addLiquidityNotFirstTime(xAmountIn, yAmountIn);
         }
+        
+        // Emit event
+        emit AddLiquidity(xAmountIn, yAmountIn);
     }
 
     // complete the function
